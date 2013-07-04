@@ -7,10 +7,12 @@
 		return uri.split(/\/+/).slice(0, -1).join('/') || '.';
 	}
 
-	function filename(uri){
-		var name = uri.split(/\/+/).pop();
+	function extension(uri){
+		return /\.js(on)*$/.test(uri) ? uri : uri + '.js'
+	}
 
-		return /\.js(on)*$/.test(name) ? name : name + '.js';
+	function filename(uri){
+		return extension(uri.split(/\/+/).pop());
 	}
 
 	function resolve(source, destination){
@@ -125,7 +127,7 @@
 		// Add aliases to list
 		for(index = 0; index < aliasList.length; index++){
 			name = aliasList[index];
-			aliases[name] = addExtension(options.alias[name]);
+			aliases[name] = extension(options.alias[name]);
 		}
 
 		// Async call for initial points
