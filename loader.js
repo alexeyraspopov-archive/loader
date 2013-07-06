@@ -120,9 +120,10 @@
 	}
 
 	function config(options){
-		var aliasList, index, name;
+		var aliasList, initial, index, name;
 
-		aliasList = Object.keys(options.alias);
+		aliasList = Object.keys(options.alias || {});
+		initial = options.start || [];
 
 		// Add aliases to list
 		for(index = 0; index < aliasList.length; index++){
@@ -130,7 +131,7 @@
 			aliases[name] = extension(options.alias[name]);
 		}
 
-		// Async call for initial points
+		// Compile all initial points
 		for(index = 0; index < options.start.length; index++){
 			require(options.start[index], '.');
 		}
