@@ -1,7 +1,6 @@
 (function(){
 	'use strict';
-	var aliases = {},
-		cache = {};
+	var alias = {}, cache = {};
 
 	function path(uri){
 		return uri.split(/\/+/).slice(0, -1).join('/') || '.';
@@ -54,14 +53,13 @@
 			var url;
 
 			// Check aliases list
-			if(aliases.hasOwnProperty(identifier)){
-				identifier = aliases[identifier];
+			if(alias.hasOwnProperty(identifier)){
+				identifier = alias[identifier];
 				url = path(identifier);
 			}else{
 				// Processing module's URL
 				url = resolve(base, path(identifier));
 				identifier = filename(identifier);
-
 
 				// Declare valid absolute path
 				if(url){
@@ -83,35 +81,31 @@
 			return cache[identifier];
 		}
 
-		// Load new module
+		// Load new module (sync request)
 		request = new XMLHttpRequest();
-
-		// Processing module's code
-		request.onreadystatechange = function(){
-			if(this.readyState !== 4 || this.status && this.status !== 200){
-				return;
-			}
-
-			if(/\.js$/.test(identifier)){
-				exports = compile(identifier, base, this.response);
-			}else{
-				// Load JSON content
-				exports = JSON.parse(this.response);
-			}
-
-			// If exports object is not exists
-			if(!exports){
-				throw new Error('Module ' + identifier + ' does not declare anything');
-			}
-		};
-
 		request.open('GET', identifier, false);
 		request.send();
 
-		// Cache module's instance for next requests
-		if(typeof exports !== 'object' || Object.keys(exports).length){
-			cache[identifier] = exports;
+		// Throw an error if script wasn't loaded
+		if(request.readyState !== 4 || request.status && request.status !== 200){
+			throw new Error('Module ' + identifier + ' can\'t be loaded');
 		}
+
+		// Processing module's code
+		if(/\.js$/.test(identifier)){
+			exports = compile(identifier, base, request.responseText);
+		}else{
+			// Load JSON content
+			exports = JSON.parse(request.responseText);
+		}
+
+		// If exports object is not exists
+		if(!exports){
+			throw new Error('Module ' + identifier + ' does not declare anything');
+		}
+
+		// Cache module's instance for next requests
+		cache[identifier] = exports;
 
 		// Prevent all manipulation with module instance
 		Object.freeze(exports);
@@ -128,17 +122,16 @@
 		// Add aliases to list
 		for(index = 0; index < aliasList.length; index++){
 			name = aliasList[index];
-			aliases[name] = extension(options.alias[name]);
+			alias[name] = extension(options.alias[name]);
 		}
 
 		// Compile all initial points
-		for(index = 0; index < options.start.length; index++){
-			require(options.start[index], '.');
+		for(index = 0; index < initial.length; index++){
+			require(initial[index], '.');
 		}
 	}
 
 	window.loader = {
-		config: config,
-		cache: cache
+		config: config
 	};
 })();
