@@ -1,13 +1,15 @@
+/* jshint -W054 */
+/* jshint -W092 */
 (function(){
 	'use strict';
 	var alias = {}, cache = {};
 
 	function path(uri){
-		return uri.split(/\/+/).slice(0, -1).join('/') || '.';
+		return uri.replace(/\/?[\.\w]+$/, '') || '.';
 	}
 
 	function extension(uri){
-		return /\.js(on)*$/.test(uri) ? uri : uri + '.js'
+		return /\.\w+$/.test(uri) ? uri : uri + '.js';
 	}
 
 	function filename(uri){
@@ -15,31 +17,27 @@
 	}
 
 	function resolve(source, destination){
-		var index, item;
+		var item;
 
 		source = source.split(/\/+/);
 		destination = destination.split(/\/+/);
 
-		for(index = 0; index < destination.length; index++){
-			item = destination[index];
-
-			if(item === '.'){
-				continue;
-			}
+		while(destination.length){
+			item = destination.shift();
 
 			if(item === '..'){
 				source.pop();
-				continue;
+			}else if(item !== '.'){
+				source.push(item);
 			}
-
-			source.push(item);
 		}
 
-		if(source[0] === '.' || !source[0]){
+		/*if(source[0] === '.' || !source[0]){
 			source = source.slice(1);
-		}
+		}*/
 
-		return source.join('/');
+		// Remove first element of path if it's empty or '.'
+		return source.join('/').replace(/^[\.\/]+/, '');
 	}
 
 	function compile(identifier, base, code){
@@ -87,7 +85,7 @@
 		request.send();
 
 		// Throw an error if script wasn't loaded
-		if(request.readyState !== 4 || request.status && request.status !== 200){
+		if(request.readyState !== 4 || request.status !== 200){
 			throw new Error('Module ' + identifier + ' can\'t be loaded');
 		}
 
@@ -114,20 +112,20 @@
 	}
 
 	function config(options){
-		var aliasList, initial, index, name;
+		var aliasList, initial, name;
 
 		aliasList = Object.keys(options.alias || {});
 		initial = options.start || [];
 
 		// Add aliases to list
-		for(index = 0; index < aliasList.length; index++){
-			name = aliasList[index];
+		while(aliasList.length){
+			name = aliasList.shift();
 			alias[name] = extension(options.alias[name]);
 		}
 
 		// Compile all initial points
-		for(index = 0; index < initial.length; index++){
-			require(initial[index], '.');
+		while(initial.length){
+			require(initial.shift(), '.');
 		}
 	}
 
