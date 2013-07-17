@@ -121,7 +121,8 @@
 
 		// Compile all initial points
 		while(initial.length){
-			require(initial.shift(), '.');
+			name = initial.shift();
+			require(name, path(name));
 		}
 	}
 
