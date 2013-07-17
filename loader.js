@@ -1,5 +1,3 @@
-/* jshint -W054 */
-/* jshint -W092 */
 (function(){
 	'use strict';
 	var alias = {}, cache = {};
@@ -9,6 +7,7 @@
 	}
 
 	function extension(uri){
+		/* jshint -W092 */
 		return /\.\w+$/.test(uri) ? uri : uri + '.js';
 	}
 
@@ -32,10 +31,6 @@
 			}
 		}
 
-		/*if(source[0] === '.' || !source[0]){
-			source = source.slice(1);
-		}*/
-
 		// Remove first element of path if it's empty or '.'
 		return source.join('/').replace(/^[\.\/]+/, '');
 	}
@@ -46,6 +41,7 @@
 		// Add sourceURL for better debugging
 		code = '"use strict";\n' + code + '\n//@ sourceURL=' + identifier;
 
+		/* jshint -W054 */
 		// Compile module by creating new scope
 		new Function('require', 'module', 'exports', code)(function(identifier){
 			var url;
