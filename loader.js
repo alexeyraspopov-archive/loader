@@ -3,7 +3,7 @@
 	var alias = {}, cache = {};
 
 	function path(uri){
-		return uri.replace(/\/?[\.\w]+$/, '') || '.';
+		return uri.split(/\/+/).slice(0, -1).join('/') || '.';
 	}
 
 	function extension(uri){
