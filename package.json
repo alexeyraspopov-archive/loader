@@ -1,6 +1,6 @@
 {
   "name": "loader",
-  "version": "0.5.2",
+  "version": "0.6.0",
   "description": "Simple CommonJS Module/1.1 proposal implementation",
   "main": "loader.js",
   "repository": {

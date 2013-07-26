@@ -1,129 +1,127 @@
 (function(){
 	'use strict';
-	var alias = {}, cache = {};
+	var pathname = location.pathname.slice(0, -1),
+		path, alias, cache;
 
-	function path(uri){
-		return uri.split(/\/+/).slice(0, -1).join('/') || '.';
-	}
+	alias = {};
+	cache = {};
 
-	function extension(uri){
-		/* jshint -W092 */
-		return /\.\w+$/.test(uri) ? uri : uri + '.js';
-	}
-
-	function filename(uri){
-		return extension(uri.split(/\/+/).pop());
-	}
-
-	function resolve(source, destination){
+	function resolve(src, dest){
 		var item;
 
-		source = source.split(/\/+/);
-		destination = destination.split(/\/+/);
+		src = src.split(/\/+/);
+		dest = dest.split(/\/+/);
 
-		while(destination.length){
-			item = destination.shift();
+		while(dest.length){
+			item = dest.shift();
 
 			if(item === '..'){
-				source.pop();
+				src.pop();
 			}else if(item !== '.'){
-				source.push(item);
+				src.push(item);
 			}
 		}
 
-		// Remove first element of path if it's empty or '.'
-		return source.join('/').replace(/^[\.\/]+/, '');
+		return src.join('/').replace(/\/+/g, '/').replace(/\/+$/, '');
 	}
 
-	function compile(identifier, base, code){
-		var module = { exports: {} };
+	// Returns file's info about path and name
+	function split(uri, base){
+		var name, file, extension;
 
-		// Add sourceURL for better debugging
-		code = '"use strict";\n' + code + '\n//@ sourceURL=' + identifier;
+		uri = uri.split(/\/+/);
+		name = uri.pop();
+		extension = name.match(/\.\w+$/);
 
-		/* jshint -W054 */
-		// Compile module by creating new scope
-		new Function('require', 'module', 'exports', code)(function(identifier){
-			var url;
+		if(!extension){
+			extension = '.js';
+			name += extension;
+		}else{
+			extension = extension[0];
+		}
 
-			// Check aliases list
-			if(alias.hasOwnProperty(identifier)){
-				identifier = alias[identifier];
-				url = path(identifier);
-			}else{
-				// Processing module's URL
-				url = resolve(base, path(identifier));
-				identifier = filename(identifier);
+		file = {
+			path: resolve(base || pathname, uri.join('/')),
+			name: name,
+			extension: extension
+		};
 
-				// Declare valid absolute path
-				if(url){
-					identifier = url + '/' + identifier;
-				}
-			}
+		file.full = file.path + '/' + file.name;
 
-			return require(identifier, url);
-		}, module, module.exports);
-
-		return module.exports;
+		return file;
 	}
 
-	function require(identifier, base){
-		var request, exports;
+	function config(options){
+		var keys, files, key;
+
+		keys = Object.keys(options.alias || {});
+		files = options.start || [];
+
+		// Add aliases to list
+		while(keys.length){
+			key = keys.shift();
+			alias[key] = split(options.alias[key]);
+		}
+
+		// Compile all initial files
+		while(files.length){
+			require(split(files.shift()));
+		}
+	}
+
+	function require(file){
+		var exports, request;
 
 		// If module is already exists
-		if(cache.hasOwnProperty(identifier)){
-			return cache[identifier];
+		if(cache.hasOwnProperty(file.full)){
+			return cache[file.full];
 		}
 
 		// Load new module (sync request)
 		request = new XMLHttpRequest();
-		request.open('GET', identifier, false);
+		request.open('GET', location.origin + file.full, false);
 		request.send();
 
 		// Throw an error if script wasn't loaded
 		if(request.readyState !== 4 || request.status !== 200){
-			throw new Error('Module ' + identifier + ' can\'t be loaded');
+			throw new Error('Module ' + file.full + ' can\'t be loaded');
 		}
 
 		// Processing module's code
-		if(/\.js$/.test(identifier)){
-			exports = compile(identifier, base, request.responseText);
+		if(file.extension === '.js'){
+			exports = compile(file, request.responseText);
 		}else{
-			// Load JSON content
 			exports = JSON.parse(request.responseText);
 		}
 
 		// If exports object is not exists
 		if(!exports){
-			throw new Error('Module ' + identifier + ' does not declare anything');
+			throw new Error('Module ' + file.full + ' does not declare anything');
 		}
 
 		// Cache module's instance for next requests
-		cache[identifier] = exports;
+		cache[file.full] = exports;
 
 		// Prevent all manipulation with module instance
 		Object.freeze(exports);
 
 		return exports;
+
 	}
 
-	function config(options){
-		var aliasList, initial, name;
+	function compile(file, codebase){
+		var module = { exports: {} };
 
-		aliasList = Object.keys(options.alias || {});
-		initial = options.start || [];
+		// Add sourceURL for better debugging
+		codebase = '"use strict";\n' + codebase + '\n//@ sourceURL=' + file.full;
 
-		// Add aliases to list
-		while(aliasList.length){
-			name = aliasList.shift();
-			alias[name] = extension(options.alias[name]);
-		}
+		/* jshint -W054 */
+		// Compile module by creating new scope
+		new Function('require', 'module', 'exports', codebase)(function(identifier){
+			return require(alias[identifier] || split(identifier, file.path));
+		}, module, module.exports);
 
-		// Compile all initial points
-		while(initial.length){
-			name = initial.shift();
-			require(name, path(name));
-		}
+		return module.exports;
 	}
 
 	window.loader = {
