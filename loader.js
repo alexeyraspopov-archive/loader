@@ -1,6 +1,6 @@
 (function(){
 	'use strict';
-	var pathname = location.pathname.slice(0, -1),
+	var pathname = location.pathname.split(/\/+/).slice(0, -1).join('/'),
 		path, alias, cache;
 
 	alias = {};
